@@ -36,42 +36,39 @@ export default function BottomNav() {
       bottom: 0, 
       left: 0, 
       right: 0, 
-      background: isDark ? '#1f2937' : '#ffffff', 
+      background: isDark ? '#000000' : '#ffffff', 
       borderTop: isDark ? '1px solid #374151' : '1px solid #e5e7eb', 
       display: 'flex', 
       justifyContent: 'space-around', 
       alignItems: 'center',
-      padding: '8px 4px', 
+      padding: '6px 0', 
       zIndex: 1100,
-      boxShadow: isDark ? '0 -2px 8px rgba(0,0,0,0.2)' : '0 -2px 8px rgba(0,0,0,0.08)',
-      height: '72px',
-      transition: 'all 0.3s ease',
-      backdropFilter: 'blur(10px)',
-      background: isDark ? 'rgba(31, 41, 55, 0.95)' : 'rgba(255, 255, 255, 0.95)'
+      boxShadow: isDark ? '0 -2px 8px rgba(0,0,0,0.3)' : '0 -1px 4px rgba(0,0,0,0.1)',
+      height: '60px'
     }}>
       {hasPermission('dashboard') && (
-        <BottomItem href="/dashboard" active={path === '/dashboard' || path.startsWith('/dashboard')} label="Scan">
-          <Icon.Bulk width={20} height={20} />
+        <BottomItem href="/dashboard" active={path === '/dashboard' || path.startsWith('/dashboard')} label="Home">
+          <Icon.Home width={22} height={22} />
         </BottomItem>
       )}
       {hasPermission('brands') && (
         <BottomItem href="/brands" active={path === '/brands' || path.startsWith('/brands')} label="Brands">
-          <Icon.Edit width={20} height={20} />
+          <Icon.Edit width={22} height={22} />
         </BottomItem>
       )}
       {hasPermission('stock') && (
         <BottomItem href="/stock" active={path === '/stock' || path.startsWith('/stock')} label="Stock">
-          <Icon.Box width={20} height={20} />
+          <Icon.Box width={22} height={22} />
         </BottomItem>
       )}
       {hasPermission('staff') && (
         <BottomItem href="/staff" active={path === '/staff' || path.startsWith('/staff')} label="Staff">
-          <Icon.Menu width={20} height={20} />
+          <Icon.Menu width={22} height={22} />
         </BottomItem>
       )}
       {role === 'superadmin' && (
         <BottomItem href="/admin" active={path === '/admin' || path.startsWith('/admin')} label="Admin">
-          <Icon.Menu width={20} height={20} />
+          <Icon.Menu width={22} height={22} />
         </BottomItem>
       )}
     </nav>
@@ -81,12 +78,9 @@ export default function BottomNav() {
 function BottomItem({ href, active, label, children }) {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
-  // Active state: solid background with high contrast
-  const activeBg = isDark ? '#667eea' : '#667eea';
-  const activeColor = '#ffffff';
-  // Inactive state: more muted
+  // Monochromatic colors - no blue/purple
+  const activeColor = isDark ? '#ffffff' : '#111827';
   const inactiveColor = isDark ? '#6b7280' : '#9ca3af';
-  const hoverBg = isDark ? '#4b5563' : '#f3f4f6';
   
   return (
     <Link 
@@ -99,45 +93,31 @@ function BottomItem({ href, active, label, children }) {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: '4px',
-        padding: '10px 16px',
-        borderRadius: '8px',
-        background: active ? activeBg : 'transparent',
-        transition: 'all 0.2s ease',
+        gap: '2px',
+        padding: '4px 8px',
+        borderRadius: '12px',
+        background: 'transparent',
         fontWeight: active ? '600' : '400',
-        fontSize: '11px',
-        minWidth: '60px',
-        opacity: active ? 1 : 0.6
-      }}
-      onMouseEnter={(e) => {
-        if (!active) {
-          e.currentTarget.style.background = hoverBg;
-          e.currentTarget.style.opacity = '0.8';
-        }
-      }}
-      onMouseLeave={(e) => {
-        if (!active) {
-          e.currentTarget.style.background = 'transparent';
-          e.currentTarget.style.opacity = '0.6';
-        }
+        fontSize: '10px',
+        minWidth: '50px',
+        flex: 1
       }}
     >
       <div style={{ 
         display: 'flex', 
         alignItems: 'center', 
         justifyContent: 'center',
-        color: active ? activeColor : inactiveColor,
-        opacity: active ? 1 : 0.7
+        color: active ? activeColor : inactiveColor
       }}>
         {children}
       </div>
       <div style={{ 
-        fontSize: '11px', 
+        fontSize: '10px', 
         fontWeight: active ? '600' : '400',
         lineHeight: 1.2,
         textAlign: 'center',
         color: active ? activeColor : inactiveColor,
-        opacity: active ? 1 : 0.7
+        marginTop: '2px'
       }}>
         {label}
       </div>

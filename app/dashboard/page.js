@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { Icon } from '@/app/components/Icons';
 import { Modal } from '@/app/components/Modal';
@@ -9,15 +11,18 @@ import Pager from '@/app/components/Pager';
 import { useTheme } from '@/app/contexts/ThemeContext';
 
 export default function DashboardPage() {
+  const router = useRouter();
   const { data: session } = useSession();
   const { notify } = React.useContext(ToastContext);
   const [imeiRecords, setImeiRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(10);
   const [search, setSearch] = useState('');
   const [total, setTotal] = useState(0);
   const [formOpen, setFormOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
   const [scannedImei, setScannedImei] = useState('');
   
   // Form fields
@@ -323,14 +328,19 @@ export default function DashboardPage() {
 
   // Function to search for IMEI manually
   async function searchImeiForSold() {
-    if (!manualImeiInput.trim()) {
+    const imeiValue = manualImeiInput.trim().replace(/\D/g, '');
+    if (!imeiValue) {
       notify('Please enter an IMEI number', 'error');
+      return;
+    }
+    if (imeiValue.length < 15 || imeiValue.length > 16) {
+      notify('IMEI must be 15-16 digits', 'error');
       return;
     }
 
     setSearchingImei(true);
     try {
-      const res = await fetch(`/api/imei/check?imei=${encodeURIComponent(manualImeiInput.trim())}`);
+      const res = await fetch(`/api/imei/check?imei=${encodeURIComponent(imeiValue)}`);
       if (res.ok) {
         const data = await res.json();
         if (data.accessDenied) {
@@ -365,7 +375,7 @@ export default function DashboardPage() {
   useEffect(() => {
     const checkDuplicate = async () => {
       const imeiValue = imei.trim();
-      if (!imeiValue || imeiValue.length < 5) {
+      if (!imeiValue || imeiValue.length < 14) {
         setDuplicateCheck({ checking: false, exists: false, record: null, accessDenied: false, message: '' });
         return;
       }
@@ -589,9 +599,9 @@ export default function DashboardPage() {
 
   const { theme } = useTheme();
   const isDark = theme === 'dark';
-  const bgColor = isDark ? '#111827' : '#f9fafb';
+  const bgColor = isDark ? '#000000' : '#f9fafb';
   const cardBg = isDark ? '#1f2937' : '#ffffff';
-  const textColor = isDark ? '#f9fafb' : '#111827';
+  const textColor = isDark ? '#ffffff' : '#111827';
   const mutedColor = isDark ? '#9ca3af' : '#6b7280';
   const borderColor = isDark ? '#374151' : '#e5e7eb';
 
@@ -604,155 +614,269 @@ export default function DashboardPage() {
       maxWidth: '100%', 
       boxSizing: 'border-box' 
     }}>
-      {/* Simple Header Section */}
+      {/* Zoho-style Header Section */}
       <div className="dashboard-header" style={{ 
-        padding: '20px 0', 
-        marginBottom: '20px', 
-        borderBottom: `1px solid ${borderColor}`
+        padding: '16px 0', 
+        marginBottom: '16px'
       }}>
         <div style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: '16px'
+          marginBottom: '16px'
         }}>
-          <div>
-            <h1 className="dashboard-title" style={{ 
-              fontSize: '24px', 
-              fontWeight: '600', 
-              color: textColor, 
-              margin: '0 0 4px 0'
-            }}>
-              Dashboard
-            </h1>
-            <p className="dashboard-subtitle" style={{
-              color: mutedColor,
-              fontSize: '14px',
-              margin: '0'
-            }}>
-              Manage your IMEI records
-            </p>
-          </div>
-          
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <h1 className="dashboard-title" style={{ 
+            fontSize: '28px', 
+            fontWeight: '700', 
+            color: textColor, 
+            margin: 0
+          }}>
+            Dashboard
+          </h1>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
             <button
               type="button"
               onClick={openScanner}
               style={{
-                background: isDark ? '#374151' : '#111827',
-                color: '#fff',
-                padding: '10px 20px',
+                background: 'transparent',
                 border: 'none',
-                borderRadius: '6px',
-                fontSize: '14px',
-                fontWeight: '500',
+                padding: '8px',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '8px'
+                justifyContent: 'center',
+                color: textColor
               }}
+              title="Scan IMEI"
             >
-              <Icon.Camera width={16} height={16} />
-              <span>Scan</span>
+              <Icon.Camera width={20} height={20} />
             </button>
             <button
               type="button"
-              onClick={openSoldFormManually}
+              onClick={() => setSearchOpen(true)}
+              className="mobile-only"
               style={{
-                background: isDark ? '#374151' : '#22c55e',
-                color: '#fff',
-                padding: '10px 20px',
+                background: 'transparent',
                 border: 'none',
-                borderRadius: '6px',
-                fontSize: '14px',
-                fontWeight: '500',
+                padding: '8px',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '8px'
+                justifyContent: 'center',
+                color: textColor
               }}
+              title="Search"
             >
-              <span>Mark as Sold</span>
+              <Icon.Search width={20} height={20} />
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (window.innerWidth <= 900) {
+                  setFilterDrawerOpen(true);
+                } else {
+                  setShowAdvancedFilters(!showAdvancedFilters);
+                }
+              }}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                padding: '8px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: textColor
+              }}
+              title="Filter"
+            >
+              <Icon.Filter width={20} height={20} />
             </button>
           </div>
         </div>
+        
+        {/* Filter Pills - Zoho Style */}
+        <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
+          <button
+            type="button"
+            onClick={() => setFilters({ ...filters, sold: null })}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '20px',
+              border: 'none',
+              fontSize: '14px',
+              fontWeight: '500',
+              cursor: 'pointer',
+              background: filters.sold === null ? (isDark ? '#374151' : '#f3f4f6') : (isDark ? '#374151' : '#f3f4f6'),
+              color: textColor,
+              fontWeight: filters.sold === null ? '600' : '400',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            All
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilters({ ...filters, sold: true })}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '20px',
+              border: 'none',
+              fontSize: '14px',
+              fontWeight: '500',
+              cursor: 'pointer',
+              background: filters.sold === true ? (isDark ? '#374151' : '#f3f4f6') : (isDark ? '#374151' : '#f3f4f6'),
+              color: textColor,
+              fontWeight: filters.sold === true ? '600' : '400',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            Sold
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilters({ ...filters, sold: false })}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '20px',
+              border: 'none',
+              fontSize: '14px',
+              fontWeight: '500',
+              cursor: 'pointer',
+              background: filters.sold === false ? (isDark ? '#374151' : '#f3f4f6') : (isDark ? '#374151' : '#f3f4f6'),
+              color: textColor,
+              fontWeight: filters.sold === false ? '600' : '400',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            Available
+          </button>
+        </div>
       </div>
 
-      {/* Simple Stats Row */}
-      <div style={{
+      {/* Zoho-style Stats Cards */}
+      <div className="dashboard-stats" style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(2, 1fr)',
         gap: '12px',
         marginBottom: '24px',
-        paddingBottom: '20px',
-        borderBottom: `1px solid ${borderColor}`
+        padding: '0 16px'
       }}>
+        {/* Total Records Card */}
         <div style={{
-          padding: '16px 0'
+          background: isDark ? '#1f2937' : '#ffffff',
+          border: `1px solid ${borderColor}`,
+          borderRadius: '12px',
+          padding: '16px',
+          color: textColor
         }}>
           <div style={{ 
             fontSize: '12px', 
-            color: mutedColor, 
+            opacity: 0.7,
             marginBottom: '8px',
-            fontWeight: '500'
+            fontWeight: '500',
+            color: textColor
           }}>Total Records</div>
-          <div style={{ fontSize: '28px', fontWeight: '600', color: textColor }}>{quickStats.total}</div>
+          <div style={{ fontSize: '28px', fontWeight: '700', color: textColor }}>{quickStats.total}</div>
         </div>
-        <div style={{ padding: '16px 0' }}>
+        <div style={{
+          background: isDark ? '#1f2937' : '#ffffff',
+          border: `1px solid ${borderColor}`,
+          borderRadius: '12px',
+          padding: '16px',
+          color: textColor
+        }}>
           <div style={{ 
             fontSize: '12px', 
-            color: mutedColor, 
+            opacity: 0.7,
             marginBottom: '8px',
-            fontWeight: '500'
-          }}>Available</div>
-          <div style={{ fontSize: '28px', fontWeight: '600', color: '#22c55e' }}>{quickStats.available}</div>
-        </div>
-        <div style={{ padding: '16px 0' }}>
-          <div style={{ 
-            fontSize: '12px', 
-            color: mutedColor, 
-            marginBottom: '8px',
-            fontWeight: '500'
-          }}>Sold</div>
-          <div style={{ fontSize: '28px', fontWeight: '600', color: textColor }}>{quickStats.sold}</div>
-        </div>
-        <div style={{ padding: '16px 0' }}>
-          <div style={{ 
-            fontSize: '12px', 
-            color: mutedColor, 
-            marginBottom: '8px',
-            fontWeight: '500'
-          }}>Total Purchase</div>
-          <div style={{ fontSize: '22px', fontWeight: '600', color: textColor }}>₹{quickStats.totalPurchase.toLocaleString('en-IN')}</div>
-        </div>
-        <div style={{ padding: '16px 0' }}>
-          <div style={{ 
-            fontSize: '12px', 
-            color: mutedColor, 
-            marginBottom: '8px',
-            fontWeight: '500'
+            fontWeight: '500',
+            color: textColor
           }}>Total Sales</div>
-          <div style={{ fontSize: '22px', fontWeight: '600', color: textColor }}>₹{quickStats.totalSales.toLocaleString('en-IN')}</div>
+          <div style={{ fontSize: '20px', fontWeight: '700', color: textColor }}>₹{quickStats.totalSales.toLocaleString('en-IN')}</div>
         </div>
-        <div style={{ padding: '16px 0' }}>
+        
+        {/* Sold Card */}
+        <div style={{
+          background: isDark ? '#1f2937' : '#ffffff',
+          border: `1px solid ${borderColor}`,
+          borderRadius: '12px',
+          padding: '16px',
+          color: textColor
+        }}>
           <div style={{ 
             fontSize: '12px', 
-            color: mutedColor, 
+            opacity: 0.7,
             marginBottom: '8px',
-            fontWeight: '500'
+            fontWeight: '500',
+            color: textColor
+          }}>Sold</div>
+          <div style={{ fontSize: '28px', fontWeight: '700', color: textColor }}>{quickStats.sold}</div>
+        </div>
+        <div style={{
+          background: isDark ? '#1f2937' : '#ffffff',
+          border: `1px solid ${borderColor}`,
+          borderRadius: '12px',
+          padding: '16px',
+          color: textColor
+        }}>
+          <div style={{ 
+            fontSize: '12px', 
+            opacity: 0.7,
+            marginBottom: '8px',
+            fontWeight: '500',
+            color: textColor
+          }}>Total Purchase</div>
+          <div style={{ fontSize: '20px', fontWeight: '700', color: textColor }}>₹{quickStats.totalPurchase.toLocaleString('en-IN')}</div>
+        </div>
+        
+        {/* Available Card */}
+        <div style={{
+          background: isDark ? '#1f2937' : '#ffffff',
+          border: `1px solid ${borderColor}`,
+          borderRadius: '12px',
+          padding: '16px',
+          color: textColor
+        }}>
+          <div style={{ 
+            fontSize: '12px', 
+            opacity: 0.7,
+            marginBottom: '8px',
+            fontWeight: '500',
+            color: textColor
+          }}>Available</div>
+          <div style={{ fontSize: '28px', fontWeight: '700', color: textColor }}>{quickStats.available}</div>
+        </div>
+        
+        {/* Profit Card */}
+        <div style={{
+          background: isDark ? '#1f2937' : '#ffffff',
+          border: `1px solid ${borderColor}`,
+          borderRadius: '12px',
+          padding: '16px',
+          color: textColor
+        }}>
+          <div style={{ 
+            fontSize: '12px', 
+            opacity: 0.7,
+            marginBottom: '8px',
+            fontWeight: '500',
+            color: textColor
           }}>Profit</div>
-          <div style={{ fontSize: '22px', fontWeight: '600', color: quickStats.profit >= 0 ? '#22c55e' : '#ef4444' }}>
-            ₹{quickStats.profit.toLocaleString('en-IN')}
+          <div style={{ 
+            fontSize: '20px', 
+            fontWeight: '700',
+            color: quickStats.profit >= 0 ? '#10b981' : '#ef4444'
+          }}>
+            {quickStats.profit >= 0 ? '+' : '-'}₹{Math.abs(quickStats.profit).toLocaleString('en-IN')}
           </div>
         </div>
       </div>
 
-      {/* Simple Filters Section */}
-      <div className="dashboard-filters" style={{
-        padding: '16px 0',
-        marginBottom: '20px',
-        borderBottom: `1px solid ${borderColor}`
+      {/* Zoho-style Filters Section - Desktop Only */}
+      <div className="dashboard-filters desktop-only" style={{
+        padding: '0 0 16px',
+        marginBottom: '20px'
       }}>
         <div style={{
           display: 'flex',
@@ -804,8 +928,9 @@ export default function DashboardPage() {
               fontSize: '14px',
               fontWeight: '500',
               cursor: 'pointer',
-              background: showAdvancedFilters ? (isDark ? '#374151' : '#111827') : (isDark ? '#374151' : '#f3f4f6'),
-              color: showAdvancedFilters ? '#fff' : textColor,
+              background: showAdvancedFilters ? (isDark ? '#374151' : '#f3f4f6') : (isDark ? '#374151' : '#f3f4f6'),
+              color: textColor,
+              fontWeight: showAdvancedFilters ? '600' : '500',
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
@@ -819,14 +944,14 @@ export default function DashboardPage() {
             type="button"
             onClick={exportToCSV}
             style={{
-              padding: '12px 20px',
+              padding: '10px 16px',
               border: `1px solid ${borderColor}`,
               borderRadius: '4px',
               fontSize: '14px',
               fontWeight: '600',
               cursor: 'pointer',
-              background: '#fff',
-              color: '#000',
+              background: isDark ? '#374151' : '#ffffff',
+              color: isDark ? '#fff' : '#000',
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
@@ -1227,7 +1352,8 @@ export default function DashboardPage() {
             {/* Simple Desktop Table */}
             <div className="desktop-only table-wrap" style={{
               overflow: 'auto',
-              borderTop: `1px solid ${borderColor}`
+              borderTop: `1px solid ${borderColor}`,
+              padding: '0'
             }}>
               <table className="dashboard-table" style={{
                 width: '100%',
@@ -1240,6 +1366,14 @@ export default function DashboardPage() {
                     background: isDark ? '#1f2937' : '#f9fafb',
                     borderBottom: `1px solid ${borderColor}`
                   }}>
+                    <th style={{ 
+                      textAlign: 'center', 
+                      padding: '12px', 
+                      fontWeight: '600', 
+                      color: textColor, 
+                      fontSize: '13px',
+                      width: '60px'
+                    }}>SR NO</th>
                     <th style={{ 
                       textAlign: 'left', 
                       padding: '12px', 
@@ -1331,6 +1465,13 @@ export default function DashboardPage() {
                       color: textColor, 
                       fontSize: '13px',
                     }}>Storage</th>
+                    <th style={{ 
+                      textAlign: 'left', 
+                      padding: '12px', 
+                      fontWeight: '600', 
+                      color: textColor, 
+                      fontSize: '13px',
+                    }}>Status</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1338,12 +1479,19 @@ export default function DashboardPage() {
                     const purchaseAmount = parseFloat(record.amount) || 0;
                     const soldAmount = parseFloat(record.sold_amount) || 0;
                     const profit = soldAmount > 0 ? soldAmount - purchaseAmount : null;
+                    const serialNumber = (page - 1) * pageSize + index + 1;
                     return (
                       <tr 
                         key={record.id} 
                         style={{ 
                           borderBottom: index < imeiRecords.length - 1 ? `1px solid ${borderColor}` : 'none',
                           background: 'transparent',
+                          cursor: 'pointer'
+                        }}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          window.location.href = `/dashboard/${record.id}`;
                         }}
                         onMouseEnter={(e) => {
                           e.currentTarget.style.background = isDark ? '#374151' : '#f9fafb';
@@ -1352,6 +1500,7 @@ export default function DashboardPage() {
                           e.currentTarget.style.background = 'transparent';
                         }}
                       >
+                        <td style={{ padding: '12px', color: textColor, fontWeight: '500', fontSize: '14px', textAlign: 'center' }}>{serialNumber}</td>
                         <td style={{ padding: '12px', color: textColor, fontWeight: '600', fontSize: '14px' }}>{record.imei}</td>
                         <td style={{ padding: '12px', color: textColor, fontSize: '14px' }}>{record.purchase || '—'}</td>
                         <td style={{ padding: '12px', color: textColor, fontSize: '14px', fontWeight: '600' }}>{record.amount ? `₹${record.amount.toLocaleString('en-IN')}` : '—'}</td>
@@ -1372,7 +1521,7 @@ export default function DashboardPage() {
                         <td style={{ padding: '12px', fontSize: '14px', fontWeight: '600' }}>
                           {profit !== null ? (
                             <span style={{ color: profit >= 0 ? '#22c55e' : '#ef4444' }}>
-                              {profit >= 0 ? '+' : ''}₹{profit.toLocaleString('en-IN')}
+                              {profit >= 0 ? '+' : '-'}₹{Math.abs(profit).toLocaleString('en-IN')}
                             </span>
                           ) : (
                             <span style={{ color: mutedColor }}>—</span>
@@ -1383,6 +1532,23 @@ export default function DashboardPage() {
                         <td style={{ padding: '12px', color: textColor, fontSize: '14px' }}>{record.color || '—'}</td>
                         <td style={{ padding: '12px', color: textColor, fontSize: '14px' }}>{record.ram || '—'}</td>
                         <td style={{ padding: '12px', color: textColor, fontSize: '14px' }}>{record.storage || '—'}</td>
+                        <td style={{ padding: '12px', color: textColor, fontSize: '14px' }}>
+                          {record.sold_name ? (
+                            <span style={{ 
+                              padding: '4px 10px', 
+                              background: isDark ? '#374151' : '#111827', 
+                              color: '#fff',
+                              borderRadius: '0',
+                              fontSize: '11px',
+                              fontWeight: '600',
+                              letterSpacing: '0.5px'
+                            }}>
+                              SOLD
+                            </span>
+                          ) : (
+                            <span style={{ color: mutedColor }}>—</span>
+                          )}
+                        </td>
                       </tr>
                     );
                   })}
@@ -1390,130 +1556,600 @@ export default function DashboardPage() {
               </table>
             </div>
 
-            {/* Mobile Cards */}
+            {/* Mobile Cards - Zoho Style */}
             <div className="mobile-only" style={{
-              display: 'flex',
               flexDirection: 'column',
-              gap: '12px'
+              gap: '0',
+              padding: '0 0'
             }}>
-              {imeiRecords.map(record => {
+              {imeiRecords.map((record, index) => {
                 const purchaseAmount = parseFloat(record.amount) || 0;
                 const soldAmount = parseFloat(record.sold_amount) || 0;
                 const profit = soldAmount > 0 ? soldAmount - purchaseAmount : null;
+                const serialNumber = (page - 1) * pageSize + index + 1;
                 return (
                   <div key={record.id} className="imei-card" style={{
-                    padding: '12px',
-                    borderBottom: `1px solid ${borderColor}`,
-                    background: cardBg,
-                    borderRadius: '4px'
-                  }}>
+                    padding: '16px',
+                    borderBottom: index < imeiRecords.length - 1 ? `1px solid ${borderColor}` : 'none',
+                    background: 'transparent',
+                    marginBottom: '0',
+                    cursor: 'pointer'
+                  }}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    window.location.href = `/dashboard/${record.id}`;
+                  }}
+                  >
+                    {/* Header with IMEI and Status - Zoho Style */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
                       <div>
-                        <div style={{ fontSize: '15px', fontWeight: '600', color: textColor, marginBottom: '4px' }}>
-                          {record.imei}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                          <span style={{ fontSize: '12px', color: mutedColor, fontWeight: '500' }}>#{serialNumber}</span>
+                          <div style={{ fontSize: '16px', fontWeight: '600', color: textColor }}>
+                            {record.imei}
+                          </div>
                         </div>
-                        <div style={{ fontSize: '13px', color: mutedColor }}>
-                          {record.brand || '—'} {record.model ? `• ${record.model}` : ''}
+                        <div style={{ fontSize: '12px', color: mutedColor }}>
+                          {record.date ? new Date(record.date).toLocaleDateString('en-IN') : '—'} {record.purchase && `• ${record.purchase}`}
                         </div>
                       </div>
-                      {record.sold_name && (
-                        <div style={{ 
-                          padding: '4px 10px', 
-                          background: isDark ? '#374151' : '#111827', 
-                          color: '#fff',
-                          borderRadius: '4px',
-                          fontSize: '11px',
-                          fontWeight: '500'
-                        }}>
-                          SOLD
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                        <div style={{ fontSize: '16px', fontWeight: '600', color: textColor }}>
+                          {record.sold_amount ? `₹${parseFloat(record.sold_amount).toLocaleString('en-IN')}` : (record.amount ? `₹${record.amount.toLocaleString('en-IN')}` : '—')}
                         </div>
-                      )}
+                        {record.sold_name && (
+                          <div style={{ 
+                            padding: '2px 8px', 
+                            background: isDark ? '#374151' : '#f3f4f6', 
+                            color: '#667eea',
+                            borderRadius: '12px',
+                            fontSize: '10px',
+                            fontWeight: '600',
+                            letterSpacing: '0.3px'
+                          }}>
+                            SOLD
+                          </div>
+                        )}
+                        {!record.sold_name && (
+                          <div style={{ 
+                            padding: '2px 8px', 
+                            background: isDark ? '#374151' : '#f3f4f6', 
+                            color: mutedColor,
+                            borderRadius: '12px',
+                            fontSize: '10px',
+                            fontWeight: '500'
+                          }}>
+                            AVAILABLE
+                          </div>
+                        )}
+                      </div>
                     </div>
                     
-                    {/* Purchase Section */}
-                    <div style={{ marginBottom: '12px', paddingBottom: '12px', borderBottom: `1px solid ${borderColor}` }}>
-                      <div style={{ fontSize: '12px', fontWeight: '600', color: textColor, marginBottom: '8px' }}>Purchase Details</div>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '13px' }}>
-                        <div>
-                          <div style={{ fontSize: '11px', color: mutedColor, marginBottom: '2px' }}>Purchase Name</div>
-                          <div style={{ color: textColor, fontWeight: '500' }}>{record.purchase || '—'}</div>
-                        </div>
-                        <div>
-                          <div style={{ fontSize: '11px', color: mutedColor, marginBottom: '2px' }}>Purchase Amount</div>
-                          <div style={{ color: textColor, fontWeight: '500' }}>{record.amount ? `₹${record.amount.toLocaleString('en-IN')}` : '—'}</div>
-                        </div>
-                        <div>
-                          <div style={{ fontSize: '11px', color: mutedColor, marginBottom: '2px' }}>Purchase Date</div>
-                          <div style={{ color: textColor }}>{record.date ? new Date(record.date).toLocaleDateString('en-IN') : '—'}</div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Sold Section */}
+                    {/* Additional Info - Zoho Style Compact */}
                     {record.sold_name && (
-                      <div style={{ marginBottom: '12px', paddingBottom: '12px', borderBottom: `1px solid ${borderColor}` }}>
-                        <div style={{ fontSize: '12px', fontWeight: '600', color: textColor, marginBottom: '8px' }}>Sold Details</div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '13px' }}>
-                          <div>
-                            <div style={{ fontSize: '11px', color: mutedColor, marginBottom: '2px' }}>Sold Name</div>
-                            <div style={{ color: textColor, fontWeight: '500' }}>{record.sold_name}</div>
-                          </div>
-                          <div>
-                            <div style={{ fontSize: '11px', color: mutedColor, marginBottom: '2px' }}>Sold Amount</div>
-                            <div style={{ color: textColor, fontWeight: '500' }}>{record.sold_amount ? `₹${parseFloat(record.sold_amount).toLocaleString('en-IN')}` : '—'}</div>
-                          </div>
-                          <div>
-                            <div style={{ fontSize: '11px', color: mutedColor, marginBottom: '2px' }}>Sold Date</div>
-                            <div style={{ color: textColor }}>{record.sold_date ? new Date(record.sold_date).toLocaleDateString('en-IN') : '—'}</div>
-                          </div>
-                          {record.store && (
-                            <div>
-                              <div style={{ fontSize: '11px', color: '#666', marginBottom: '2px' }}>Store</div>
-                              <div style={{ color: '#000' }}>{record.store}</div>
-                            </div>
-                          )}
+                      <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: `1px solid ${borderColor}` }}>
+                        <div style={{ fontSize: '12px', color: mutedColor }}>
+                          Sold to <span style={{ color: textColor, fontWeight: '500' }}>{record.sold_name}</span>
                           {profit !== null && (
-                            <div style={{ gridColumn: '1 / -1' }}>
-                              <div style={{ fontSize: '11px', color: '#666', marginBottom: '2px' }}>Profit</div>
-                              <div style={{ color: profit >= 0 ? '#22c55e' : '#ef4444', fontWeight: '600', fontSize: '14px' }}>
-                                {profit >= 0 ? '+' : ''}₹{profit.toLocaleString('en-IN')}
-                              </div>
-                            </div>
+                            <span style={{ 
+                              marginLeft: '8px', 
+                              color: profit >= 0 ? '#22c55e' : '#ef4444', 
+                              fontWeight: '600' 
+                            }}>
+                              {profit >= 0 ? '+' : ''}₹{Math.abs(profit).toLocaleString('en-IN')}
+                            </span>
                           )}
                         </div>
                       </div>
                     )}
-
-                    {/* Specifications */}
-                    <div>
-                      <div style={{ fontSize: '12px', fontWeight: '600', color: '#000', marginBottom: '8px' }}>Specifications</div>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '13px' }}>
-                        <div>
-                          <div style={{ fontSize: '11px', color: '#666', marginBottom: '2px' }}>Color</div>
-                          <div style={{ color: '#000' }}>{record.color || '—'}</div>
-                        </div>
-                        <div>
-                          <div style={{ fontSize: '11px', color: '#666', marginBottom: '2px' }}>RAM</div>
-                          <div style={{ color: '#000' }}>{record.ram || '—'}</div>
-                        </div>
-                        <div>
-                          <div style={{ fontSize: '11px', color: '#666', marginBottom: '2px' }}>Storage</div>
-                          <div style={{ color: '#000' }}>{record.storage || '—'}</div>
-                        </div>
-                      </div>
-                    </div>
                   </div>
                 );
               })}
             </div>
             
-            {/* Pagination */}
-            <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'center' }}>
+            {/* Pagination - Full Width */}
+            <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'center', padding: '0' }}>
               <Pager page={page} pageSize={pageSize} total={total} onChange={setPage} />
             </div>
           </>
         )}
       </div>
+
+      {/* Floating Action Button (FAB) - Zoho Style - Mobile Only */}
+      <div className="mobile-only" style={{
+        position: 'fixed',
+        bottom: '76px',
+        right: '16px',
+        zIndex: 1000
+      }}>
+        <button
+          type="button"
+          onClick={() => {
+            resetForm();
+            setFormOpen(true);
+          }}
+          style={{
+            width: '56px',
+            height: '56px',
+            borderRadius: '50%',
+            background: isDark ? '#374151' : '#ffffff',
+            color: textColor,
+            border: `1px solid ${borderColor}`,
+            boxShadow: isDark ? '0 4px 12px rgba(0, 0, 0, 0.3)' : '0 4px 12px rgba(0, 0, 0, 0.1)',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '24px',
+            fontWeight: '300'
+          }}
+          title="Add New Record"
+        >
+          <Icon.Plus width={24} height={24} />
+        </button>
+      </div>
+
+      {/* Mobile Search Drawer */}
+      <Modal open={searchOpen} title="Search" onClose={() => setSearchOpen(false)}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <input
+            type="text"
+            value={search}
+            onChange={e => { setSearch(e.target.value); setPage(1); }}
+            placeholder="Search IMEI, purchase, brand..."
+            autoFocus
+            style={{
+              width: '100%',
+              padding: '12px 16px',
+              border: `1px solid ${borderColor}`,
+              borderRadius: '8px',
+              fontSize: '16px',
+              boxSizing: 'border-box',
+              background: cardBg,
+              color: textColor
+            }}
+          />
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <button
+              type="button"
+              onClick={() => {
+                setSearch('');
+                setSearchOpen(false);
+                setPage(1);
+              }}
+              style={{
+                flex: 1,
+                padding: '12px',
+                border: `1px solid ${borderColor}`,
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: 'pointer',
+                background: 'transparent',
+                color: textColor
+              }}
+            >
+              Clear
+            </button>
+            <button
+              type="button"
+              onClick={() => setSearchOpen(false)}
+              style={{
+                flex: 1,
+                padding: '12px',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                background: '#667eea',
+                color: '#fff'
+              }}
+            >
+              Search
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Mobile Filter Drawer */}
+      <Modal open={filterDrawerOpen} title={`Filters ${getActiveFiltersCount() > 0 ? `(${getActiveFiltersCount()})` : ''}`} onClose={() => setFilterDrawerOpen(false)}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxHeight: '70vh', overflowY: 'auto' }}>
+          {/* Status Filter */}
+          <div>
+            <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: textColor, marginBottom: '8px' }}>
+              Status
+            </label>
+            <select
+              value={filters.status}
+              onChange={e => { setFilters({...filters, status: e.target.value}); setPage(1); }}
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                border: `1px solid ${borderColor}`,
+                borderRadius: '8px',
+                fontSize: '16px',
+                cursor: 'pointer',
+                background: cardBg,
+                color: textColor,
+                boxSizing: 'border-box'
+              }}
+            >
+              <option value="">All</option>
+              <option value="available">Available</option>
+              <option value="sold">Sold</option>
+            </select>
+          </div>
+
+          {/* Brand Filter */}
+          <div>
+            <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: textColor, marginBottom: '8px' }}>
+              Brand
+            </label>
+            <select
+              value={filters.brand}
+              onChange={e => { setFilters({...filters, brand: e.target.value}); setPage(1); }}
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                border: `1px solid ${borderColor}`,
+                borderRadius: '8px',
+                fontSize: '16px',
+                cursor: 'pointer',
+                background: cardBg,
+                color: textColor,
+                boxSizing: 'border-box'
+              }}
+            >
+              <option value="">All Brands</option>
+              {brands.map(b => (
+                <option key={b.id} value={b.name}>{b.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Color Filter */}
+          <div>
+            <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: textColor, marginBottom: '8px' }}>
+              Color
+            </label>
+            <select
+              value={filters.color}
+              onChange={e => { setFilters({...filters, color: e.target.value}); setPage(1); }}
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                border: `1px solid ${borderColor}`,
+                borderRadius: '8px',
+                fontSize: '16px',
+                cursor: 'pointer',
+                background: cardBg,
+                color: textColor,
+                boxSizing: 'border-box'
+              }}
+            >
+              <option value="">All Colors</option>
+              {colors.map(c => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* RAM Filter */}
+          <div>
+            <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: textColor, marginBottom: '8px' }}>
+              RAM
+            </label>
+            <select
+              value={filters.ram}
+              onChange={e => { setFilters({...filters, ram: e.target.value}); setPage(1); }}
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                border: `1px solid ${borderColor}`,
+                borderRadius: '8px',
+                fontSize: '16px',
+                cursor: 'pointer',
+                background: cardBg,
+                color: textColor,
+                boxSizing: 'border-box'
+              }}
+            >
+              <option value="">All RAM</option>
+              {ramOptions.map(r => (
+                <option key={r} value={r}>{r}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Storage Filter */}
+          <div>
+            <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: textColor, marginBottom: '8px' }}>
+              Storage
+            </label>
+            <select
+              value={filters.storage}
+              onChange={e => { setFilters({...filters, storage: e.target.value}); setPage(1); }}
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                border: `1px solid ${borderColor}`,
+                borderRadius: '8px',
+                fontSize: '16px',
+                cursor: 'pointer',
+                background: cardBg,
+                color: textColor,
+                boxSizing: 'border-box'
+              }}
+            >
+              <option value="">All Storage</option>
+              {storageOptions.map(s => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Purchase Name Filter */}
+          <div>
+            <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: textColor, marginBottom: '8px' }}>
+              Purchase Name
+            </label>
+            <input
+              type="text"
+              value={filters.purchaseName}
+              onChange={e => { setFilters({...filters, purchaseName: e.target.value}); setPage(1); }}
+              placeholder="Filter by purchase name"
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                border: `1px solid ${borderColor}`,
+                borderRadius: '8px',
+                fontSize: '16px',
+                boxSizing: 'border-box',
+                background: cardBg,
+                color: textColor
+              }}
+            />
+          </div>
+
+          {/* Purchase Date From */}
+          <div>
+            <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: textColor, marginBottom: '8px' }}>
+              Purchase Date From
+            </label>
+            <input
+              type="date"
+              value={filters.purchaseDateFrom}
+              onChange={e => { setFilters({...filters, purchaseDateFrom: e.target.value}); setPage(1); }}
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                border: `1px solid ${borderColor}`,
+                borderRadius: '8px',
+                fontSize: '16px',
+                boxSizing: 'border-box',
+                background: cardBg,
+                color: textColor
+              }}
+            />
+          </div>
+
+          {/* Purchase Date To */}
+          <div>
+            <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: textColor, marginBottom: '8px' }}>
+              Purchase Date To
+            </label>
+            <input
+              type="date"
+              value={filters.purchaseDateTo}
+              onChange={e => { setFilters({...filters, purchaseDateTo: e.target.value}); setPage(1); }}
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                border: `1px solid ${borderColor}`,
+                borderRadius: '8px',
+                fontSize: '16px',
+                boxSizing: 'border-box',
+                background: cardBg,
+                color: textColor
+              }}
+            />
+          </div>
+
+          {/* Sold Date From */}
+          <div>
+            <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: textColor, marginBottom: '8px' }}>
+              Sold Date From
+            </label>
+            <input
+              type="date"
+              value={filters.soldDateFrom}
+              onChange={e => { setFilters({...filters, soldDateFrom: e.target.value}); setPage(1); }}
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                border: `1px solid ${borderColor}`,
+                borderRadius: '8px',
+                fontSize: '16px',
+                boxSizing: 'border-box',
+                background: cardBg,
+                color: textColor
+              }}
+            />
+          </div>
+
+          {/* Sold Date To */}
+          <div>
+            <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: textColor, marginBottom: '8px' }}>
+              Sold Date To
+            </label>
+            <input
+              type="date"
+              value={filters.soldDateTo}
+              onChange={e => { setFilters({...filters, soldDateTo: e.target.value}); setPage(1); }}
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                border: `1px solid ${borderColor}`,
+                borderRadius: '8px',
+                fontSize: '16px',
+                boxSizing: 'border-box',
+                background: cardBg,
+                color: textColor
+              }}
+            />
+          </div>
+
+          {/* Purchase Amount Min */}
+          <div>
+            <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: textColor, marginBottom: '8px' }}>
+              Purchase Amount Min (₹)
+            </label>
+            <input
+              type="number"
+              value={filters.purchaseAmountMin}
+              onChange={e => { setFilters({...filters, purchaseAmountMin: e.target.value}); setPage(1); }}
+              placeholder="Min amount"
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                border: `1px solid ${borderColor}`,
+                borderRadius: '8px',
+                fontSize: '16px',
+                boxSizing: 'border-box',
+                background: cardBg,
+                color: textColor
+              }}
+            />
+          </div>
+
+          {/* Purchase Amount Max */}
+          <div>
+            <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: textColor, marginBottom: '8px' }}>
+              Purchase Amount Max (₹)
+            </label>
+            <input
+              type="number"
+              value={filters.purchaseAmountMax}
+              onChange={e => { setFilters({...filters, purchaseAmountMax: e.target.value}); setPage(1); }}
+              placeholder="Max amount"
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                border: `1px solid ${borderColor}`,
+                borderRadius: '8px',
+                fontSize: '16px',
+                boxSizing: 'border-box',
+                background: cardBg,
+                color: textColor
+              }}
+            />
+          </div>
+
+          {/* Sold Amount Min */}
+          <div>
+            <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: textColor, marginBottom: '8px' }}>
+              Sold Amount Min (₹)
+            </label>
+            <input
+              type="number"
+              value={filters.soldAmountMin}
+              onChange={e => { setFilters({...filters, soldAmountMin: e.target.value}); setPage(1); }}
+              placeholder="Min amount"
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                border: `1px solid ${borderColor}`,
+                borderRadius: '8px',
+                fontSize: '16px',
+                boxSizing: 'border-box',
+                background: cardBg,
+                color: textColor
+              }}
+            />
+          </div>
+
+          {/* Sold Amount Max */}
+          <div>
+            <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: textColor, marginBottom: '8px' }}>
+              Sold Amount Max (₹)
+            </label>
+            <input
+              type="number"
+              value={filters.soldAmountMax}
+              onChange={e => { setFilters({...filters, soldAmountMax: e.target.value}); setPage(1); }}
+              placeholder="Max amount"
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                border: `1px solid ${borderColor}`,
+                borderRadius: '8px',
+                fontSize: '16px',
+                boxSizing: 'border-box',
+                background: cardBg,
+                color: textColor
+              }}
+            />
+          </div>
+
+          {/* Action Buttons */}
+          <div style={{ display: 'flex', gap: '12px', marginTop: '8px', paddingTop: '16px', borderTop: `1px solid ${borderColor}` }}>
+            <button
+              type="button"
+              onClick={() => {
+                setFilters({
+                  status: '',
+                  brand: '',
+                  color: '',
+                  ram: '',
+                  storage: '',
+                  purchaseName: '',
+                  purchaseDateFrom: '',
+                  purchaseDateTo: '',
+                  soldDateFrom: '',
+                  soldDateTo: '',
+                  purchaseAmountMin: '',
+                  purchaseAmountMax: '',
+                  soldAmountMin: '',
+                  soldAmountMax: ''
+                });
+                setPage(1);
+              }}
+              style={{
+                flex: 1,
+                padding: '12px',
+                border: `1px solid ${borderColor}`,
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: 'pointer',
+                background: 'transparent',
+                color: textColor
+              }}
+            >
+              Clear All
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterDrawerOpen(false)}
+              style={{
+                flex: 1,
+                padding: '12px',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                background: '#667eea',
+                color: '#fff'
+              }}
+            >
+              Apply Filters
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       {/* IMEI Form Modal */}
       <Modal open={formOpen} title={editingRecord ? "Edit IMEI Record" : "Add IMEI Record"} onClose={() => { 
@@ -1547,15 +2183,18 @@ export default function DashboardPage() {
                 type="text"
                 value={imeiInput || imei}
                 onChange={e => {
-                  const value = e.target.value;
+                  const value = e.target.value.replace(/\D/g, '').slice(0, 16);
                   setImeiInput(value);
                   setImei(value);
                   setShowImeiDropdown(value.length > 0);
                 }}
                 onFocus={() => setShowImeiDropdown(true)}
                 onBlur={() => setTimeout(() => setShowImeiDropdown(false), 200)}
-                placeholder="Select existing IMEI or enter manually"
+                placeholder="Enter IMEI (15-16 digits)"
                 required
+                minLength={15}
+                maxLength={16}
+                pattern="[0-9]{15,16}"
                 list="imei-list"
                 style={{
                   width: '100%',
@@ -2060,9 +2699,16 @@ export default function DashboardPage() {
               </label>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <input
+                  type="text"
                   value={manualImeiInput}
-                  onChange={e => setManualImeiInput(e.target.value)}
-                  placeholder="Enter IMEI number"
+                  onChange={e => {
+                    const value = e.target.value.replace(/\D/g, '').slice(0, 16);
+                    setManualImeiInput(value);
+                  }}
+                  placeholder="Enter IMEI (15-16 digits)"
+                  minLength={15}
+                  maxLength={16}
+                  pattern="[0-9]{15,16}"
                   onKeyPress={e => {
                     if (e.key === 'Enter') {
                       searchImeiForSold();
@@ -2082,7 +2728,7 @@ export default function DashboardPage() {
                 <button
                   type="button"
                   onClick={searchImeiForSold}
-                  disabled={searchingImei || !manualImeiInput.trim()}
+                  disabled={searchingImei || !manualImeiInput.trim() || manualImeiInput.trim().replace(/\D/g, '').length < 15}
                   style={{
                     background: searchingImei || !manualImeiInput.trim() ? '#f3f4f6' : '#111827',
                     color: searchingImei || !manualImeiInput.trim() ? '#9ca3af' : '#fff',

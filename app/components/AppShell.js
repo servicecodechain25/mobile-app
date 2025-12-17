@@ -91,6 +91,10 @@ export default function AppShell({ children }) {
       const hasPermission = (key) => permissions[key] === true;
       
       // Check each route with its specific permission
+      // Allow dashboard detail pages and edit pages
+      if ((currentPath.startsWith('/dashboard/') && hasPermission('dashboard'))) {
+        return;
+      }
       if (currentPath === '/dashboard' && hasPermission('dashboard')) {
         return;
       }
@@ -115,7 +119,7 @@ export default function AppShell({ children }) {
       
       // Redirect to first available page based on permissions
       const firstPage = getFirstAvailablePage(session);
-      if (currentPath !== firstPage) {
+      if (currentPath !== firstPage && !currentPath.startsWith('/dashboard/')) {
         router.push(firstPage);
       }
     }
@@ -177,8 +181,14 @@ export default function AppShell({ children }) {
         videoRef.current, 
         async (result) => {
           if (result) {
-            const text = (result.getText?.() || result.text || '').trim();
-            if (!text || lastScannedRef.current === text) return;
+            const text = (result.getText?.() || result.text || '').trim().replace(/\D/g, '');
+            // Validate IMEI: 15-16 digits
+            if (!text || text.length < 15 || text.length > 16 || lastScannedRef.current === text) {
+              if (text && text.length < 15) {
+                setScanError(`Invalid IMEI: Must be 15-16 digits (got ${text.length})`);
+              }
+              return;
+            }
             
             lastScannedRef.current = text;
             // Dispatch custom event for dashboard to listen
@@ -391,7 +401,7 @@ export default function AppShell({ children }) {
           padding: sidebarCollapsed ? '16px 8px' : '16px 12px',
           display: 'flex',
           flexDirection: 'column',
-          gap: '8px',
+          // gap: '8px',
           boxShadow: isDark ? '2px 0 8px rgba(0,0,0,0.1)' : '2px 0 8px rgba(0,0,0,0.04)',
           overflowY: 'auto',
           transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -622,7 +632,7 @@ export default function AppShell({ children }) {
           display: 'flex',
           flexDirection: 'column',
           background: isDark ? '#111827' : '#f9fafb',
-          padding: '24px',
+          // padding: '24px',
           overflowY: 'auto',
           transition: 'background-color 0.3s ease'
         }}>
@@ -687,26 +697,29 @@ export default function AppShell({ children }) {
         onConfirm={() => { window.location.href = '/api/auth/signout'; }}
       />
 
-      {/* IMEI Scanner Modal */}
-      <Modal open={scannerOpen} title="Scan IMEI" onClose={() => { setScannerOpen(false); stopScanner(); }}>
+      {/* IMEI Scanner Modal - Machine Style */}
+      <Modal open={scannerOpen} title="" fullscreen={true} onClose={() => { setScannerOpen(false); stopScanner(); }}>
         <div style={{
           display: 'flex',
           flexDirection: 'column',
-          gap: '16px'
+          gap: '0',
+          padding: '0'
         }}>
-          {/* Scanner Area */}
+          {/* Scanner Area - Full Screen Machine Style */}
           <div style={{
             position: 'relative',
             width: '100%',
-            aspectRatio: '4 / 3',
+            minHeight: '400px',
             background: '#000',
-            borderRadius: '8px'
+            borderRadius: '0',
+            overflow: 'hidden'
           }}>
             <video
               ref={videoRef}
               style={{
                 width: '100%',
                 height: '100%',
+                minHeight: '400px',
                 objectFit: 'cover'
               }}
               muted
@@ -714,87 +727,173 @@ export default function AppShell({ children }) {
               autoPlay
             />
             
-            {/* Scanning frame */}
-            <div style={{ position: 'absolute', inset: '15%', pointerEvents: 'none' }}>
-              {/* Corner brackets */}
-              <div style={{ position: 'absolute', top: 0, left: 0, width: 30, height: 30, borderTop: '3px solid #fff', borderLeft: '3px solid #fff' }} />
-              <div style={{ position: 'absolute', top: 0, right: 0, width: 30, height: 30, borderTop: '3px solid #fff', borderRight: '3px solid #fff' }} />
-              <div style={{ position: 'absolute', bottom: 0, left: 0, width: 30, height: 30, borderBottom: '3px solid #fff', borderLeft: '3px solid #fff' }} />
-              <div style={{ position: 'absolute', bottom: 0, right: 0, width: 30, height: 30, borderBottom: '3px solid #fff', borderRight: '3px solid #fff' }} />
-            </div>
-
-            {/* Instructions */}
-            <div style={{
-              position: 'absolute',
-              bottom: '16px',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              background: 'rgba(0,0,0,0.7)',
-              color: 'white',
-              padding: '8px 16px',
-              borderRadius: '20px',
-              fontSize: '13px'
+            {/* Overlay with scanning area */}
+            <div style={{ 
+              position: 'absolute', 
+              inset: 0,
+              background: 'linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, transparent 20%, transparent 60%, rgba(0,0,0,0.4) 100%)'
             }}>
-              Point Camera at IMEI Barcode
+              {/* Scanning frame - centered */}
+              <div style={{ 
+                position: 'absolute', 
+                top: '50%', 
+                left: '50%', 
+                transform: 'translate(-50%, -50%)',
+                width: '80%',
+                maxWidth: '300px',
+                aspectRatio: '3 / 1',
+                pointerEvents: 'none'
+              }}>
+                {/* Corner brackets - larger for machine style */}
+                <div style={{ 
+                  position: 'absolute', 
+                  top: 0, 
+                  left: 0, 
+                  width: 50, 
+                  height: 50, 
+                  borderTop: '4px solid #00ff00', 
+                  borderLeft: '4px solid #00ff00',
+                  boxShadow: '0 0 10px #00ff00'
+                }} />
+                <div style={{ 
+                  position: 'absolute', 
+                  top: 0, 
+                  right: 0, 
+                  width: 50, 
+                  height: 50, 
+                  borderTop: '4px solid #00ff00', 
+                  borderRight: '4px solid #00ff00',
+                  boxShadow: '0 0 10px #00ff00'
+                }} />
+                <div style={{ 
+                  position: 'absolute', 
+                  bottom: 0, 
+                  left: 0, 
+                  width: 50, 
+                  height: 50, 
+                  borderBottom: '4px solid #00ff00', 
+                  borderLeft: '4px solid #00ff00',
+                  boxShadow: '0 0 10px #00ff00'
+                }} />
+                <div style={{ 
+                  position: 'absolute', 
+                  bottom: 0, 
+                  right: 0, 
+                  width: 50, 
+                  height: 50, 
+                  borderBottom: '4px solid #00ff00', 
+                  borderRight: '4px solid #00ff00',
+                  boxShadow: '0 0 10px #00ff00'
+                }} />
+                
+                {/* Scanning line animation */}
+                {scanning && (
+                  <div style={{
+                    position: 'absolute',
+                    left: 0,
+                    right: 0,
+                    height: '2px',
+                    background: '#00ff00',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    boxShadow: '0 0 20px #00ff00',
+                    animation: 'scanLineMove 2s linear infinite'
+                  }} />
+                )}
+              </div>
+
+              {/* Status indicator */}
+              {scanning && (
+                <div style={{
+                  position: 'absolute',
+                  top: '20px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  background: '#00ff00',
+                  color: '#000',
+                  padding: '8px 16px',
+                  borderRadius: '20px',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  fontFamily: 'monospace',
+                  boxShadow: '0 0 20px #00ff00'
+                }}>
+                  SCANNING...
+                </div>
+              )}
+
+              {/* Instructions */}
+              <div style={{
+                position: 'absolute',
+                bottom: '80px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                color: '#fff',
+                fontSize: '14px',
+                fontWeight: '500',
+                textAlign: 'center',
+                textShadow: '0 2px 4px rgba(0,0,0,0.8)'
+              }}>
+                Position barcode within frame
+              </div>
             </div>
           </div>
 
           {/* Error Message */}
           {scanError && (
             <div style={{
-              background: '#fef2f2',
-              border: '1px solid #fecaca',
-              borderRadius: '6px',
+              background: '#dc2626',
+              color: '#fff',
               padding: '12px',
               fontSize: '13px',
-              color: '#dc2626',
-              textAlign: 'center'
+              textAlign: 'center',
+              fontWeight: '500'
             }}>
               {scanError}
             </div>
           )}
 
-          {/* Control Buttons */}
+          {/* Control Buttons - Machine Style */}
           <div style={{ 
-            display: 'flex', 
-            gap: '12px', 
-            justifyContent: 'center'
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(2, 1fr)',
+            gap: '0',
+            borderTop: '2px solid #000'
           }}>
             <button 
               type="button" 
               onClick={startScanner} 
               disabled={scanning}
               style={{ 
-                background: scanning ? '#f3f4f6' : '#111827',
-                color: scanning ? '#9ca3af' : '#fff',
-                padding: '12px 24px',
+                background: scanning ? '#374151' : '#111827',
+                color: '#fff',
+                padding: '16px',
                 border: 'none',
-                borderRadius: '6px',
-                fontSize: '14px',
-                fontWeight: '500',
+                borderRadius: '0',
+                fontSize: '16px',
+                fontWeight: '600',
                 cursor: scanning ? 'not-allowed' : 'pointer',
-                flex: 1
+                borderRight: '1px solid #000'
               }}
             >
-              {scanning ? 'Scanning...' : 'Start Scan'}
+              {scanning ? 'SCANNING...' : 'START SCAN'}
             </button>
             <button 
               type="button" 
               onClick={stopScanner} 
               disabled={!scanning}
               style={{ 
-                background: !scanning ? '#f3f4f6' : '#ef4444',
-                color: !scanning ? '#9ca3af' : '#fff',
-                padding: '12px 24px',
+                background: !scanning ? '#374151' : '#dc2626',
+                color: '#fff',
+                padding: '16px',
                 border: 'none',
-                borderRadius: '6px',
-                fontSize: '14px',
-                fontWeight: '500',
-                cursor: !scanning ? 'not-allowed' : 'pointer',
-                flex: 1
+                borderRadius: '0',
+                fontSize: '16px',
+                fontWeight: '600',
+                cursor: !scanning ? 'not-allowed' : 'pointer'
               }}
             >
-              Stop Scan
+              STOP
             </button>
           </div>
         </div>

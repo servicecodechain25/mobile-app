@@ -5,11 +5,19 @@ import { useSession } from 'next-auth/react';
 import { Icon } from '@/app/components/Icons';
 import { ConfirmDialog, Modal } from '@/app/components/Modal';
 import { ToastContext } from '@/app/components/ToastProvider';
+import { useTheme } from '@/app/contexts/ThemeContext';
 import Pager from '@/app/components/Pager';
 
 export default function StaffPage() {
   const { data: session } = useSession();
   const { notify } = React.useContext(ToastContext);
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+  const bgColor = isDark ? '#000000' : '#f9fafb';
+  const textColor = isDark ? '#ffffff' : '#111827';
+  const mutedColor = isDark ? '#9ca3af' : '#6b7280';
+  const borderColor = isDark ? '#374151' : '#e5e7eb';
+  const cardBg = isDark ? '#1f2937' : '#ffffff';
   const [staff, setStaff] = useState([]);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -137,144 +145,230 @@ export default function StaffPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#fff', padding: '16px', width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
+    <div style={{ minHeight: '100vh', background: bgColor, padding: '0 16px', width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
       {/* Header */}
-      <div style={{ marginBottom: '24px' }}>
-        <h1 style={{ fontSize: '24px', fontWeight: '600', color: '#000', margin: '0 0 8px 0' }}>
-          Staff Management
-        </h1>
-        <p style={{ color: '#666', fontSize: '14px', margin: 0 }}>
-          Manage staff members and permissions
-        </p>
+      <div style={{ padding: '16px 0', marginBottom: '16px', borderBottom: `1px solid ${borderColor}` }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+          <div>
+            <h1 style={{ fontSize: '28px', fontWeight: 'bold', color: textColor, margin: '0 0 8px 0' }}>
+              Staff
+            </h1>
+            <p style={{ color: mutedColor, fontSize: '14px', margin: 0 }}>
+              Manage staff members and permissions
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setEditStaff(null);
+              setName('');
+              setEmail('');
+              setPassword('');
+              setPermissions({ dashboard: false, brands: false, stock: false, reports: false, activity: false, profile: false, staff: false });
+              setFormOpen(true);
+            }}
+            style={{
+              padding: '10px 20px',
+              border: `1px solid ${borderColor}`,
+              borderRadius: '8px',
+              fontSize: '14px',
+              fontWeight: '500',
+              cursor: 'pointer',
+              background: isDark ? '#374151' : '#111827',
+              color: '#ffffff',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            + Add Staff
+          </button>
+        </div>
+
+        {/* Search */}
+        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+          <input
+            value={search}
+            onChange={e => { setSearch(e.target.value); setPage(1); }}
+            placeholder="Search staff..."
+            style={{
+              flex: 1,
+              minWidth: '200px',
+              padding: '10px 16px',
+              border: `1px solid ${borderColor}`,
+              borderRadius: '8px',
+              fontSize: '14px',
+              background: cardBg,
+              color: textColor
+            }}
+          />
+        </div>
       </div>
 
-      {/* Search and Add */}
-      <div style={{ display: 'flex', gap: '12px', marginBottom: '24px', flexWrap: 'wrap' }}>
-        <input
-          value={search}
-          onChange={e => { setSearch(e.target.value); setPage(1); }}
-          placeholder="Search staff..."
-          style={{
-            flex: 1,
-            minWidth: '200px',
-            padding: '10px 16px',
-            border: '1px solid #ddd',
-            borderRadius: '8px',
-            fontSize: '14px',
-            background: '#fff'
-          }}
-        />
-        <button
-          type="button"
-          onClick={() => {
-            setEditStaff(null);
-            setName('');
-            setEmail('');
-            setPassword('');
-            setPermissions({ dashboard: false, brands: false, stock: false, reports: false, activity: false, profile: false, staff: false });
-            setFormOpen(true);
-          }}
-          style={{
-            padding: '10px 20px',
-            border: '1px solid #000',
-            borderRadius: '8px',
-            fontSize: '14px',
-            fontWeight: '500',
-            cursor: 'pointer',
-            background: '#000',
-            color: '#fff',
-            whiteSpace: 'nowrap'
-          }}
-        >
-          + Add Staff
-        </button>
-      </div>
-
-      {/* Staff List - Mobile Card View */}
+      {/* Staff List */}
       {loading ? (
         <div style={{ textAlign: 'center', padding: '40px' }}>
-          <div style={{ fontSize: '14px', color: '#666' }}>Loading...</div>
+          <div style={{ fontSize: '14px', color: mutedColor }}>Loading...</div>
         </div>
       ) : staff.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
+        <div style={{ textAlign: 'center', padding: '40px', color: mutedColor }}>
           No staff members found
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
-          {staff.map(staffMember => (
-            <div
-              key={staffMember.id}
-              style={{
-                background: '#fff',
-                border: '1px solid #ddd',
-                borderRadius: '8px',
-                padding: '16px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '12px'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div>
-                  <div style={{ fontSize: '16px', fontWeight: '600', color: '#000', marginBottom: '4px' }}>
-                    {staffMember.name}
+        <>
+          {/* Desktop Table */}
+          <div className="desktop-only table-wrap">
+            <table style={{
+              width: '100%',
+              borderCollapse: 'collapse',
+              background: 'transparent'
+            }}>
+              <thead>
+                <tr style={{ background: isDark ? '#1f2937' : '#f7f7f8' }}>
+                  <th style={{ textAlign: 'left', padding: '16px', fontWeight: '600', color: textColor, borderBottom: `1px solid ${borderColor}` }}>ID</th>
+                  <th style={{ textAlign: 'left', padding: '16px', fontWeight: '600', color: textColor, borderBottom: `1px solid ${borderColor}` }}>Name</th>
+                  <th style={{ textAlign: 'left', padding: '16px', fontWeight: '600', color: textColor, borderBottom: `1px solid ${borderColor}` }}>Email</th>
+                  <th style={{ textAlign: 'left', padding: '16px', fontWeight: '600', color: textColor, borderBottom: `1px solid ${borderColor}` }}>Permissions</th>
+                  <th style={{ textAlign: 'left', padding: '16px', fontWeight: '600', color: textColor, borderBottom: `1px solid ${borderColor}` }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {staff.map(staffMember => (
+                  <tr key={staffMember.id} style={{ borderBottom: `1px solid ${borderColor}` }}>
+                    <td style={{ padding: '16px', color: textColor, fontWeight: '500' }}>{staffMember.id}</td>
+                    <td style={{ padding: '16px', color: textColor, fontWeight: '500' }}>{staffMember.name}</td>
+                    <td style={{ padding: '16px', color: textColor }}>{staffMember.email}</td>
+                    <td style={{ padding: '16px' }}>
+                      {staffMember.permissions && Object.keys(staffMember.permissions).some(k => staffMember.permissions[k]) ? (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                          {Object.entries(staffMember.permissions).map(([key, value]) => 
+                            value && (
+                              <span key={key} style={{ 
+                                padding: '2px 8px', 
+                                background: isDark ? '#374151' : '#f5f5f5', 
+                                borderRadius: '4px',
+                                fontSize: '11px',
+                                color: textColor
+                              }}>
+                                {key}
+                              </span>
+                            )
+                          )}
+                        </div>
+                      ) : (
+                        <span style={{ color: mutedColor, fontSize: '12px' }}>No permissions</span>
+                      )}
+                    </td>
+                    <td style={{ padding: '16px' }}>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                          onClick={() => startEdit(staffMember)}
+                          style={{
+                            background: 'transparent',
+                            border: `1px solid ${borderColor}`,
+                            borderRadius: '4px',
+                            padding: '6px',
+                            cursor: 'pointer',
+                            color: textColor
+                          }}
+                        >
+                          <Icon.Edit width={14} height={14} />
+                        </button>
+                        <button
+                          onClick={() => setConfirmId(staffMember.id)}
+                          style={{
+                            background: 'transparent',
+                            border: `1px solid ${borderColor}`,
+                            borderRadius: '4px',
+                            padding: '6px',
+                            cursor: 'pointer',
+                            color: textColor
+                          }}
+                        >
+                          <Icon.Trash width={14} height={14} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile Cards */}
+          <div className="mobile-only">
+            {staff.map(staffMember => (
+              <div
+                key={staffMember.id}
+                style={{
+                  background: cardBg,
+                  border: `1px solid ${borderColor}`,
+                  borderRadius: '8px',
+                  padding: '16px',
+                  marginBottom: '12px'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                  <div>
+                    <div style={{ fontSize: '16px', fontWeight: '600', color: textColor, marginBottom: '4px' }}>
+                      {staffMember.name}
+                    </div>
+                    <div style={{ fontSize: '12px', color: mutedColor }}>
+                      {staffMember.email}
+                    </div>
                   </div>
-                  <div style={{ fontSize: '12px', color: '#666' }}>
-                    {staffMember.email}
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                      onClick={() => startEdit(staffMember)}
+                      style={{
+                        padding: '6px 12px',
+                        border: `1px solid ${borderColor}`,
+                        borderRadius: '6px',
+                        background: 'transparent',
+                        cursor: 'pointer',
+                        color: textColor
+                      }}
+                    >
+                      <Icon.Edit width={14} height={14} />
+                    </button>
+                    <button
+                      onClick={() => setConfirmId(staffMember.id)}
+                      style={{
+                        padding: '6px 12px',
+                        border: `1px solid ${borderColor}`,
+                        borderRadius: '6px',
+                        background: 'transparent',
+                        cursor: 'pointer',
+                        color: textColor
+                      }}
+                    >
+                      <Icon.Trash width={14} height={14} />
+                    </button>
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <button
-                    onClick={() => startEdit(staffMember)}
-                    style={{
-                      padding: '6px 12px',
-                      border: '1px solid #ddd',
-                      borderRadius: '6px',
-                      background: '#fff',
-                      cursor: 'pointer',
-                      fontSize: '12px'
-                    }}
-                  >
-                    <Icon.Edit width={14} height={14} />
-                  </button>
-                  <button
-                    onClick={() => setConfirmId(staffMember.id)}
-                    style={{
-                      padding: '6px 12px',
-                      border: '1px solid #ddd',
-                      borderRadius: '6px',
-                      background: '#fff',
-                      cursor: 'pointer',
-                      fontSize: '12px'
-                    }}
-                  >
-                    <Icon.Trash width={14} height={14} />
-                  </button>
-                </div>
+                
+                {staffMember.permissions && Object.keys(staffMember.permissions).some(k => staffMember.permissions[k]) && (
+                  <div style={{ fontSize: '12px', color: mutedColor, paddingTop: '12px', borderTop: `1px solid ${borderColor}` }}>
+                    <div style={{ fontWeight: '500', marginBottom: '6px', color: textColor }}>Permissions:</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                      {Object.entries(staffMember.permissions).map(([key, value]) => 
+                        value && (
+                          <span key={key} style={{ 
+                            padding: '3px 8px', 
+                            background: isDark ? '#374151' : '#f5f5f5', 
+                            borderRadius: '4px',
+                            fontSize: '11px',
+                            color: textColor
+                          }}>
+                            {key}
+                          </span>
+                        )
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
-              
-              {staffMember.permissions && (
-                <div style={{ fontSize: '12px', color: '#666', paddingTop: '8px', borderTop: '1px solid #f0f0f0' }}>
-                  <div style={{ fontWeight: '500', marginBottom: '4px' }}>Permissions:</div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                    {Object.entries(staffMember.permissions).map(([key, value]) => 
-                      value && (
-                        <span key={key} style={{ 
-                          padding: '2px 8px', 
-                          background: '#f5f5f5', 
-                          borderRadius: '4px',
-                          fontSize: '11px'
-                        }}>
-                          {key}
-                        </span>
-                      )
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        </>
       )}
 
       {/* Pagination */}
@@ -295,7 +389,7 @@ export default function StaffPage() {
       }}>
         <form onSubmit={editStaff ? updateStaff : addStaff} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div>
-            <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px', color: '#000' }}>
+            <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px', color: textColor }}>
               Name
             </label>
             <input
@@ -305,16 +399,18 @@ export default function StaffPage() {
               style={{
                 width: '100%',
                 padding: '10px 12px',
-                border: '1px solid #ddd',
+                border: `1px solid ${borderColor}`,
                 borderRadius: '8px',
                 fontSize: '14px',
-                boxSizing: 'border-box'
+                boxSizing: 'border-box',
+                background: cardBg,
+                color: textColor
               }}
             />
           </div>
           
           <div>
-            <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px', color: '#000' }}>
+            <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px', color: textColor }}>
               Email
             </label>
             <input
@@ -325,17 +421,19 @@ export default function StaffPage() {
               style={{
                 width: '100%',
                 padding: '10px 12px',
-                border: '1px solid #ddd',
+                border: `1px solid ${borderColor}`,
                 borderRadius: '8px',
                 fontSize: '14px',
-                boxSizing: 'border-box'
+                boxSizing: 'border-box',
+                background: cardBg,
+                color: textColor
               }}
             />
           </div>
           
           {!editStaff && (
             <div>
-              <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px', color: '#000' }}>
+              <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px', color: textColor }}>
                 Password
               </label>
               <input
@@ -346,10 +444,12 @@ export default function StaffPage() {
                 style={{
                   width: '100%',
                   padding: '10px 12px',
-                  border: '1px solid #ddd',
+                  border: `1px solid ${borderColor}`,
                   borderRadius: '8px',
                   fontSize: '14px',
-                  boxSizing: 'border-box'
+                  boxSizing: 'border-box',
+                  background: cardBg,
+                  color: textColor
                 }}
               />
             </div>
@@ -359,14 +459,14 @@ export default function StaffPage() {
           <div style={{
             marginTop: '8px',
             padding: '16px',
-            background: '#f8f9fa',
+            background: isDark ? '#111827' : '#f8f9fa',
             borderRadius: '8px',
-            border: '1px solid #e1e5e9'
+            border: `1px solid ${borderColor}`
           }}>
-            <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', marginBottom: '12px', color: '#000' }}>
+            <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', marginBottom: '12px', color: textColor }}>
               Menu Permissions
             </label>
-            <p style={{ fontSize: '12px', color: '#666', margin: '0 0 12px 0' }}>
+            <p style={{ fontSize: '12px', color: mutedColor, margin: '0 0 12px 0' }}>
               Select which menus this staff can access
             </p>
             <div style={{
@@ -390,10 +490,10 @@ export default function StaffPage() {
                     alignItems: 'flex-start',
                     gap: '10px',
                     padding: '10px',
-                    border: (editStaff ? editPermissions[menu.key] : permissions[menu.key]) ? '2px solid #000' : '2px solid #e1e5e9',
+                    border: (editStaff ? editPermissions[menu.key] : permissions[menu.key]) ? `2px solid ${isDark ? '#ffffff' : '#000'}` : `2px solid ${borderColor}`,
                     borderRadius: '6px',
                     cursor: 'pointer',
-                    background: (editStaff ? editPermissions[menu.key] : permissions[menu.key]) ? '#f5f5f5' : '#fff',
+                    background: (editStaff ? editPermissions[menu.key] : permissions[menu.key]) ? (isDark ? '#374151' : '#f5f5f5') : cardBg,
                     transition: 'all 0.2s ease'
                   }}
                 >
@@ -410,10 +510,10 @@ export default function StaffPage() {
                     style={{ width: '16px', height: '16px', marginTop: '2px', cursor: 'pointer' }}
                   />
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '13px', fontWeight: '600', color: '#000', marginBottom: '2px' }}>
+                    <div style={{ fontSize: '13px', fontWeight: '600', color: textColor, marginBottom: '2px' }}>
                       {menu.icon} {menu.label}
                     </div>
-                    <div style={{ fontSize: '11px', color: '#666' }}>
+                    <div style={{ fontSize: '11px', color: mutedColor }}>
                       {menu.desc}
                     </div>
                   </div>
@@ -435,12 +535,13 @@ export default function StaffPage() {
               }}
               style={{
                 padding: '10px 20px',
-                border: '1px solid #ddd',
+                border: `1px solid ${borderColor}`,
                 borderRadius: '8px',
                 fontSize: '14px',
                 fontWeight: '500',
                 cursor: 'pointer',
-                background: '#fff'
+                background: isDark ? '#374151' : '#f3f4f6',
+                color: textColor
               }}
             >
               Cancel
@@ -449,13 +550,13 @@ export default function StaffPage() {
               type="submit"
               style={{
                 padding: '10px 20px',
-                border: '1px solid #000',
+                border: 'none',
                 borderRadius: '8px',
                 fontSize: '14px',
                 fontWeight: '500',
                 cursor: 'pointer',
-                background: '#000',
-                color: '#fff'
+                background: isDark ? '#374151' : '#111827',
+                color: '#ffffff'
               }}
             >
               {editStaff ? 'Update' : 'Create'}

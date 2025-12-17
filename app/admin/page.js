@@ -213,11 +213,11 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="admin-container" style={{ minHeight: '100vh', background: isDark ? '#111827' : '#f9fafb', padding: '20px', width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
+    <div className="admin-container" style={{ minHeight: '100vh', background: isDark ? '#000000' : '#f9fafb', padding: '0 16px', width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
       {/* Header Section */}
       <div className="admin-header" style={{
-        padding: '20px 0',
-        marginBottom: '20px',
+        padding: '16px 0',
+        marginBottom: '16px',
         borderBottom: `1px solid ${borderColor}`
       }}>
         <div style={{
@@ -226,7 +226,7 @@ export default function AdminPage() {
           justifyContent: 'space-between',
           flexWrap: 'wrap',
           gap: '16px',
-          marginBottom: '24px'
+          marginBottom: '16px'
         }}>
           <div>
             <h1 className="admin-title" style={{
@@ -235,11 +235,11 @@ export default function AdminPage() {
               color: textColor,
               margin: '0 0 8px 0'
             }}>
-              Admin Management
+              Admin
             </h1>
             <p className="admin-subtitle" style={{
               color: mutedColor,
-              fontSize: '18px',
+              fontSize: '14px',
               margin: '0'
             }}>
               Create and manage admins with custom permissions
@@ -285,16 +285,16 @@ export default function AdminPage() {
         {/* Add Admin Form */}
         <form onSubmit={addAdmin} className="add-admin-form" style={{
           display: 'grid',
-          gap: '20px',
-          padding: '20px 0',
+          gap: '16px',
+          padding: '16px 0',
           borderBottom: `1px solid ${borderColor}`,
-          marginBottom: '20px'
+          marginBottom: '16px'
         }}>
           <h3 style={{
-            fontSize: '18px',
+            fontSize: '16px',
             fontWeight: '600',
             color: textColor,
-            margin: '0 0 16px 0'
+            margin: '0 0 12px 0'
           }}>
             Create New Admin
           </h3>
@@ -487,43 +487,26 @@ export default function AdminPage() {
 
       {/* Filters Section */}
       <div className="admin-filters" style={{
-        padding: '20px 0',
-        marginBottom: '20px',
+        padding: '0 0 16px 0',
+        marginBottom: '16px',
         borderBottom: `1px solid ${borderColor}`
       }}>
-        <h3 style={{
-          fontSize: '18px',
-          fontWeight: '600',
-          color: textColor,
-          margin: '0 0 16px 0'
-        }}>
-          Search & Filter
-        </h3>
         <div style={{
           display: 'flex',
-          gap: '16px',
+          gap: '12px',
           flexWrap: 'wrap',
           alignItems: 'center'
         }}>
           <div style={{ flex: '1', minWidth: '200px' }}>
-            <label style={{
-              display: 'block',
-              fontSize: '14px',
-              fontWeight: '600',
-              color: textColor,
-              marginBottom: '8px'
-            }}>
-              Search Admins
-            </label>
             <input
               value={search}
               onChange={e => { setSearch(e.target.value); setPage(1); }}
-              placeholder="Search by name or email..."
+              placeholder="Search admins..."
               style={{
                 width: '100%',
-                padding: '12px 16px',
+                padding: '10px 16px',
                 border: `1px solid ${borderColor}`,
-                borderRadius: '4px',
+                borderRadius: '8px',
                 fontSize: '14px',
                 boxSizing: 'border-box',
                 background: inputBg,
@@ -532,23 +515,14 @@ export default function AdminPage() {
             />
           </div>
           <div>
-            <label style={{
-              display: 'block',
-              fontSize: '14px',
-              fontWeight: '600',
-              color: textColor,
-              marginBottom: '8px'
-            }}>
-              Items
-            </label>
             <select
               value={pageSize}
               onChange={e => { setPageSize(Number(e.target.value)); setPage(1); }}
               style={{
-                padding: '12px 16px',
-                border: `2px solid ${borderColor}`,
-                borderRadius: '4px',
-                fontSize: '16px',
+                padding: '10px 16px',
+                border: `1px solid ${borderColor}`,
+                borderRadius: '8px',
+                fontSize: '14px',
                 background: inputBg,
                 color: textColor,
                 cursor: 'pointer'
@@ -563,7 +537,7 @@ export default function AdminPage() {
       </div>
       
       {/* Content Section */}
-      <div className="admin-content" style={{ padding: '20px 0' }}>
+      <div className="admin-content" style={{ padding: '0' }}>
         {loading ? (
           <div style={{
             display: 'flex',
@@ -715,16 +689,14 @@ export default function AdminPage() {
             </div>
 
             {/* Mobile Cards */}
-            <div className="mobile-only" style={{
-              gridTemplateColumns: 'repeat(2, 1fr)',
-              gap: '12px'
-            }}>
+            <div className="mobile-only">
               {admins.map(admin => (
                 <div key={admin.id} className="admin-card" style={{
                   background: cardBg,
-                  padding: '12px',
-                  borderBottom: `1px solid ${borderColor}`,
-                  borderRadius: '4px'
+                  padding: '16px',
+                  border: `1px solid ${borderColor}`,
+                  borderRadius: '8px',
+                  marginBottom: '12px'
                 }}>
                   <div style={{
                     display: 'flex',
