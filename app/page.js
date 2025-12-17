@@ -74,7 +74,7 @@ export default function HomePage() {
         flexWrap: 'wrap'
       }}>
         <Link href="/login" style={{ background: '#111', color: '#fff', padding: '14px 28px', borderRadius: '10px', textDecoration: 'none', fontWeight: 600, fontSize: 16, display: 'inline-block', minWidth: 140 }}>
-          🚀 Login
+          Login
         </Link>
         {/* <Link href="/register" style={{
           background: 'white',
@@ -156,4 +156,5 @@ function FeatureCard({ icon, title, description }) {
     </div>
   );
 }
+
 
