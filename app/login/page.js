@@ -2,7 +2,7 @@
 
 import { signIn } from 'next-auth/react';
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
 /**
@@ -11,6 +11,7 @@ import Link from 'next/link';
  */
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -37,28 +38,80 @@ export default function LoginPage() {
       const sessionResponse = await fetch('/api/auth/session');
       const sessionData = await sessionResponse.json();
       
-      // Determine redirect based on role and permissions
+      // Check if there's a callbackUrl from middleware redirect
+      const callbackUrl = searchParams.get('callbackUrl');
+      
+      // Determine redirect based on role and permissions (same logic as AppShell)
       let redirectPath = '/dashboard';
       if (sessionData?.user) {
         const role = sessionData.user.role;
+        const permissions = sessionData.user.permissions || {};
+        const hasPermission = (key) => permissions[key] === true;
         
         // Superadmin always goes to Admin Management
         if (role === 'superadmin') {
           redirectPath = '/admin';
         } else {
-          // Admin/Staff redirect based on permissions
-          const permissions = sessionData.user.permissions || {};
-          const hasPermission = (key) => permissions[key] === true;
-          
-          // Check permissions in order of priority
-          if (hasPermission('dashboard')) redirectPath = '/dashboard';
-          else if (hasPermission('brands')) redirectPath = '/brands';
-          else if (hasPermission('stock')) redirectPath = '/stock';
-          else if (role === 'admin') redirectPath = '/staff';
+          // If callbackUrl exists, check if user has permission for that page
+          if (callbackUrl) {
+            // Extract path from callbackUrl (handle both relative and absolute URLs)
+            let callbackPath = callbackUrl;
+            try {
+              // Try to parse as URL if it's absolute
+              if (callbackUrl.startsWith('http://') || callbackUrl.startsWith('https://')) {
+                const urlObj = new URL(callbackUrl);
+                callbackPath = urlObj.pathname;
+              } else {
+                // Remove query params if present
+                callbackPath = callbackUrl.split('?')[0];
+              }
+            } catch (e) {
+              // If parsing fails, just use the callbackUrl as-is
+              callbackPath = callbackUrl.split('?')[0];
+            }
+            
+            // Check if user has permission for the callback page
+            if (callbackPath === '/dashboard' && hasPermission('dashboard')) {
+              redirectPath = '/dashboard';
+            } else if (callbackPath === '/brands' && hasPermission('brands')) {
+              redirectPath = '/brands';
+            } else if (callbackPath === '/stock' && hasPermission('stock')) {
+              redirectPath = '/stock';
+            } else if (callbackPath === '/reports' && hasPermission('reports')) {
+              redirectPath = '/reports';
+            } else if (callbackPath === '/activity' && hasPermission('activity')) {
+              redirectPath = '/activity';
+            } else if (callbackPath === '/profile' && hasPermission('profile')) {
+              redirectPath = '/profile';
+            } else if (callbackPath === '/staff' && hasPermission('staff')) {
+              redirectPath = '/staff';
+            } else if (callbackPath === '/admin' && role === 'superadmin') {
+              redirectPath = '/admin';
+            } else {
+              // User doesn't have permission for callbackUrl, use first available page
+              if (hasPermission('dashboard')) redirectPath = '/dashboard';
+              else if (hasPermission('brands')) redirectPath = '/brands';
+              else if (hasPermission('stock')) redirectPath = '/stock';
+              else if (hasPermission('reports')) redirectPath = '/reports';
+              else if (hasPermission('activity')) redirectPath = '/activity';
+              else if (hasPermission('profile')) redirectPath = '/profile';
+              else if (hasPermission('staff')) redirectPath = '/staff';
+            }
+          } else {
+            // No callbackUrl, use first available page based on permissions
+            if (hasPermission('dashboard')) redirectPath = '/dashboard';
+            else if (hasPermission('brands')) redirectPath = '/brands';
+            else if (hasPermission('stock')) redirectPath = '/stock';
+            else if (hasPermission('reports')) redirectPath = '/reports';
+            else if (hasPermission('activity')) redirectPath = '/activity';
+            else if (hasPermission('profile')) redirectPath = '/profile';
+            else if (hasPermission('staff')) redirectPath = '/staff';
+          }
         }
       }
       
-      router.push(redirectPath);
+      // Use replace instead of push to avoid callbackUrl in history
+      router.replace(redirectPath);
     } catch (err) {
       setError('An error occurred. Please try again.');
     } finally {

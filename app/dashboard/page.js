@@ -40,6 +40,8 @@ export default function DashboardPage() {
   const [soldDate, setSoldDate] = useState('');
   const [store, setStore] = useState('');
   const [soldSubmitting, setSoldSubmitting] = useState(false);
+  const [manualImeiInput, setManualImeiInput] = useState('');
+  const [searchingImei, setSearchingImei] = useState(false);
 
   // Loaded options
   const [brands, setBrands] = useState([]);
@@ -308,6 +310,55 @@ export default function DashboardPage() {
     setSoldDate('');
     setStore('');
     setExistingImeiRecord(null);
+    setManualImeiInput('');
+    setSearchingImei(false);
+  }
+
+  // Function to open sold form with manual IMEI entry
+  function openSoldFormManually() {
+    setSoldFormOpen(true);
+    setExistingImeiRecord(null);
+    setManualImeiInput('');
+  }
+
+  // Function to search for IMEI manually
+  async function searchImeiForSold() {
+    if (!manualImeiInput.trim()) {
+      notify('Please enter an IMEI number', 'error');
+      return;
+    }
+
+    setSearchingImei(true);
+    try {
+      const res = await fetch(`/api/imei/check?imei=${encodeURIComponent(manualImeiInput.trim())}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.accessDenied) {
+          notify(data.message || 'This IMEI belongs to another user', 'error');
+          setSearchingImei(false);
+          return;
+        }
+        if (data.exists && data.record) {
+          // Check if already sold
+          if (data.record.sold_name) {
+            notify('This IMEI is already marked as sold', 'error');
+            setSearchingImei(false);
+            return;
+          }
+          setExistingImeiRecord(data.record);
+          notify('IMEI found successfully');
+        } else {
+          notify('IMEI not found. Please check the IMEI number.', 'error');
+        }
+      } else {
+        notify('Error checking IMEI', 'error');
+      }
+    } catch (error) {
+      console.error('Error searching IMEI:', error);
+      notify('Error searching IMEI', 'error');
+    } finally {
+      setSearchingImei(false);
+    }
   }
 
   // Real-time duplicate checking
@@ -584,26 +635,47 @@ export default function DashboardPage() {
             </p>
           </div>
           
-          <button
-            type="button"
-            onClick={openScanner}
-            style={{
-              background: isDark ? '#374151' : '#111827',
-              color: '#fff',
-              padding: '10px 20px',
-              border: 'none',
-              borderRadius: '6px',
-              fontSize: '14px',
-              fontWeight: '500',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}
-          >
-            <Icon.Camera width={16} height={16} />
-            <span>Scan</span>
-          </button>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={openScanner}
+              style={{
+                background: isDark ? '#374151' : '#111827',
+                color: '#fff',
+                padding: '10px 20px',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              <Icon.Camera width={16} height={16} />
+              <span>Scan</span>
+            </button>
+            <button
+              type="button"
+              onClick={openSoldFormManually}
+              style={{
+                background: isDark ? '#374151' : '#22c55e',
+                color: '#fff',
+                padding: '10px 20px',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              <span>Mark as Sold</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1979,20 +2051,92 @@ export default function DashboardPage() {
         setSoldFormOpen(false); 
         resetSoldForm();
       }}>
-        {existingImeiRecord && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', padding: '20px', background: 'white' }}>
+        {!existingImeiRecord ? (
+          // Manual IMEI Entry Section
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: textColor, marginBottom: '8px' }}>
+                Enter IMEI Number
+              </label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input
+                  value={manualImeiInput}
+                  onChange={e => setManualImeiInput(e.target.value)}
+                  placeholder="Enter IMEI number"
+                  onKeyPress={e => {
+                    if (e.key === 'Enter') {
+                      searchImeiForSold();
+                    }
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: '12px 16px',
+                    border: `1px solid ${borderColor}`,
+                    borderRadius: '4px',
+                    fontSize: '14px',
+                    boxSizing: 'border-box',
+                    background: cardBg,
+                    color: textColor
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={searchImeiForSold}
+                  disabled={searchingImei || !manualImeiInput.trim()}
+                  style={{
+                    background: searchingImei || !manualImeiInput.trim() ? '#f3f4f6' : '#111827',
+                    color: searchingImei || !manualImeiInput.trim() ? '#9ca3af' : '#fff',
+                    padding: '12px 24px',
+                    border: 'none',
+                    borderRadius: '4px',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    cursor: searchingImei || !manualImeiInput.trim() ? 'not-allowed' : 'pointer',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  {searchingImei ? 'Searching...' : 'Search'}
+                </button>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => { 
+                  setSoldFormOpen(false); 
+                  resetSoldForm();
+                }}
+                style={{
+                  background: '#f3f4f6',
+                  color: '#374151',
+                  padding: '12px 24px',
+                  border: 'none',
+                  borderRadius: '4px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : (
+          // Existing IMEI Details and Sold Form
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             {/* Display existing IMEI details */}
             <div style={{ 
-              background: '#f0f9ff', 
-              border: '1px solid #bae6fd', 
+              background: isDark ? '#1f2937' : '#f0f9ff', 
+              border: `1px solid ${isDark ? '#374151' : '#bae6fd'}`, 
               borderRadius: '4px', 
               padding: '16px',
               marginBottom: '8px'
             }}>
-              <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#0369a1', margin: '0 0 12px 0' }}>
+              <h3 style={{ fontSize: '16px', fontWeight: '600', color: textColor, margin: '0 0 12px 0' }}>
                 IMEI Details
               </h3>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', fontSize: '14px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', fontSize: '14px', color: textColor }}>
                 <div><strong>IMEI:</strong> {existingImeiRecord.imei}</div>
                 <div><strong>Brand:</strong> {existingImeiRecord.brand || '—'}</div>
                 <div><strong>Model:</strong> {existingImeiRecord.model || '—'}</div>
@@ -2008,7 +2152,7 @@ export default function DashboardPage() {
             <form onSubmit={handleSoldSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#333', marginBottom: '8px' }}>
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: textColor, marginBottom: '8px' }}>
                     Sold Name (Buyer Name)
                   </label>
                   <input
@@ -2018,16 +2162,18 @@ export default function DashboardPage() {
                     style={{
                       width: '100%',
                       padding: '12px 16px',
-                      border: '2px solid #e1e5e9',
+                      border: `1px solid ${borderColor}`,
                       borderRadius: '4px',
-                      fontSize: '16px',
-                      boxSizing: 'border-box'
+                      fontSize: '14px',
+                      boxSizing: 'border-box',
+                      background: cardBg,
+                      color: textColor
                     }}
                   />
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#333', marginBottom: '8px' }}>
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: textColor, marginBottom: '8px' }}>
                     Sold Amount
                   </label>
                   <input
@@ -2039,16 +2185,18 @@ export default function DashboardPage() {
                     style={{
                       width: '100%',
                       padding: '12px 16px',
-                      border: '2px solid #e1e5e9',
+                      border: `1px solid ${borderColor}`,
                       borderRadius: '4px',
-                      fontSize: '16px',
-                      boxSizing: 'border-box'
+                      fontSize: '14px',
+                      boxSizing: 'border-box',
+                      background: cardBg,
+                      color: textColor
                     }}
                   />
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#333', marginBottom: '8px' }}>
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: textColor, marginBottom: '8px' }}>
                     Sold Date
                   </label>
                   <input
@@ -2058,16 +2206,18 @@ export default function DashboardPage() {
                     style={{
                       width: '100%',
                       padding: '12px 16px',
-                      border: '2px solid #e1e5e9',
+                      border: `1px solid ${borderColor}`,
                       borderRadius: '4px',
-                      fontSize: '16px',
-                      boxSizing: 'border-box'
+                      fontSize: '14px',
+                      boxSizing: 'border-box',
+                      background: cardBg,
+                      color: textColor
                     }}
                   />
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#333', marginBottom: '8px' }}>
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: textColor, marginBottom: '8px' }}>
                     Store
                   </label>
                   <input
@@ -2077,16 +2227,37 @@ export default function DashboardPage() {
                     style={{
                       width: '100%',
                       padding: '12px 16px',
-                      border: '2px solid #e1e5e9',
+                      border: `1px solid ${borderColor}`,
                       borderRadius: '4px',
-                      fontSize: '16px',
-                      boxSizing: 'border-box'
+                      fontSize: '14px',
+                      boxSizing: 'border-box',
+                      background: cardBg,
+                      color: textColor
                     }}
                   />
                 </div>
               </div>
 
               <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  onClick={() => { 
+                    setExistingImeiRecord(null);
+                    setManualImeiInput('');
+                  }}
+                  style={{
+                    background: '#f3f4f6',
+                    color: '#374151',
+                    padding: '12px 24px',
+                    border: 'none',
+                    borderRadius: '4px',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Change IMEI
+                </button>
                 <button
                   type="button"
                   onClick={() => { 
@@ -2098,9 +2269,9 @@ export default function DashboardPage() {
                     color: '#374151',
                     padding: '12px 24px',
                     border: 'none',
-                    borderRadius: '8px',
-                    fontSize: '16px',
-                    fontWeight: '600',
+                    borderRadius: '4px',
+                    fontSize: '14px',
+                    fontWeight: '500',
                     cursor: 'pointer'
                   }}
                 >
@@ -2114,9 +2285,9 @@ export default function DashboardPage() {
                     color: 'white',
                     padding: '12px 24px',
                     border: 'none',
-                    borderRadius: '8px',
-                    fontSize: '16px',
-                    fontWeight: '600',
+                    borderRadius: '4px',
+                    fontSize: '14px',
+                    fontWeight: '500',
                     cursor: soldSubmitting ? 'not-allowed' : 'pointer'
                   }}
                 >

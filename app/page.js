@@ -36,9 +36,9 @@ export default function HomePage() {
           <span style={{ background: '#f3f4f6', color: '#374151', padding: '6px 12px', borderRadius: '16px', fontSize: '14px', fontWeight: '500', border: '1px solid #e5e7eb' }}>
             👥 User Management
           </span>
-          <span style={{ background: '#f3f4f6', color: '#374151', padding: '6px 12px', borderRadius: '16px', fontSize: '14px', fontWeight: '500', border: '1px solid #e5e7eb' }}>
+          {/* <span style={{ background: '#f3f4f6', color: '#374151', padding: '6px 12px', borderRadius: '16px', fontSize: '14px', fontWeight: '500', border: '1px solid #e5e7eb' }}>
             📱 Mobile Optimized
-          </span>
+          </span> */}
         </div>
       </div>
 
@@ -59,11 +59,11 @@ export default function HomePage() {
           title="Secure Authentication"
           description="Password hashing and JWT-based session management"
         />
-        <FeatureCard
+        {/* <FeatureCard
           icon="📱"
           title="Responsive Design"
           description="Mobile-first design optimized for all devices"
-        />
+        /> */}
       </div>
 
       {/* Action Buttons */}
@@ -76,7 +76,7 @@ export default function HomePage() {
         <Link href="/login" style={{ background: '#111', color: '#fff', padding: '14px 28px', borderRadius: '10px', textDecoration: 'none', fontWeight: 600, fontSize: 16, display: 'inline-block', minWidth: 140 }}>
           🚀 Login
         </Link>
-        <Link href="/register" style={{
+        {/* <Link href="/register" style={{
           background: 'white',
           color: '#667eea',
           padding: '14px 28px',
@@ -90,7 +90,7 @@ export default function HomePage() {
           minWidth: '140px'
         }}>
           ✨ Register
-        </Link>
+        </Link> */}
       </div>
 
       {/* Footer */}
